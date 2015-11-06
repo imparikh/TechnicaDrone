@@ -42,15 +42,15 @@ client.takeoff(function() {
 	function update(){	
 		if (state == STATE_GOINGTOZ) {
 			distanceZ = tarAltitude - z;
-			zInRange = Math.abs(z - tarAltitude) <= (EPSILON * INCHESTOMETER);
+			zInRange = Math.abs(z - tarAltitude) <= (EPSILON * INCHESTOMETER) / 2;
 			console.log("STATE_GOINGTOZ. Am at " + z + " = " + zInRange + " EPSILON= " + (EPSILON * INCHESTOMETER)/ 2 + " distZ= "+ distanceZ);
 			if (zInRange){
 				console.log("In Range Z")
 				client.stop()
-				//state = STATE_FLIPPING
-				//flipper()
+				state = STATE_FLIPPING
+				flipper()
 				setTimeout(function(){
-					state = STATE_GOINGTOY
+					state = STATE_GOINGTOZ
 				}, 3000)
 			}
 			else if(z < tarAltitude){
@@ -61,6 +61,7 @@ client.takeoff(function() {
 			}
 		}
 		else if (state == STATE_GOINGTOY){
+			console.log("Doing Y things")
 			distanceY = tarAltitude - y;
 			yInRange = Math.abs(y - tarY) <= (EPSILON * INCHESTOMETER) / 2;
 			console.log("STATE_GOINGTOY. Am at " + y + " = " + yInRange + " EPSILON= " + (EPSILON * INCHESTOMETER) / 2 + " distY= "+ distanceY);
