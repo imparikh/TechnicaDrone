@@ -5,4 +5,4 @@ process.argv.forEach(function (val, index, array) {
 
 var arDrone = require('ar-drone');
 var client  = arDrone.createClient(args);
-client.createRepl();
+client.createRepl(ip);

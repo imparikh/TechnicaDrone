@@ -11,6 +11,6 @@ client.takeoff(function() {
 	this.after(1000, function() {
 		this.stop();
 	}).after(5000, function() {
-		this.stop();
+		this.land();
 	});
 });
