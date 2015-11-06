@@ -13,7 +13,7 @@ client.takeoff(function() {
 	}).after(5000, function() {
 		this.animate('flipLeft', 100);
 	}).after(5000, function() {
-		this.stop();
+		this.land();
 	});
 });
 
