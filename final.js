@@ -1,15 +1,42 @@
-var arDrone = require('ar-drone');
-var client  = arDrone.createClient();
+
+
+
+var request = require('request');
+var fs = require('fs')
+
 var tarAltitude = 1.5
-var tarX = 7.5
-var tarY = 7.5
+var tarX
+var tarY
 var x = 7.5
 var y = 7.5
 var z = 0
-var velocity
-var readyToGoTarget = false;
-var readyToGoHome = false;
-var executedFlip = false;
+
+//get the password
+var pw = fs.readFile('/Users/iParikh/Desktop/pw.txt', 'utf8', function (err,data) {
+	if (err) {
+	    return console.log(err);
+	}
+		return data.toString()
+});
+
+//if hit up key
+window.onkeyup = function(e) {
+    var key = e.keyCode ? e.keyCode : e.which;
+    // && idle
+    if (key == 38) {
+        getNextDrop(pw, function(drop) {
+			// have next drop
+			tarY = drop.ycoord / 100 * 10
+			tarX = drop.xcoord / 100 * 15
+			starter()
+		})
+    }
+}
+
+//resetDropCounter(pw);
+	
+var arDrone = require('ar-drone');
+var client  = arDrone.createClient();
 
 var INCHESTOMETER = 0.0254
 var EPSILON = 4
@@ -19,7 +46,7 @@ var STATE_TAKEOFF = 1;
 var STATE_GOINGTOZ = 2;
 var STATE_GOINGTOY = 3;
 var STATE_GOINGTOX = 4;
-var STATE_FLIPPING =5;
+var STATE_FLIPPING = 5;
 var state = STATE_TAKEOFF;
 
 
@@ -30,25 +57,49 @@ client.on('navdata', function(data) {
 	}
 });
 
-client.takeoff(function() {
-	//client.calibrate(0)
-	//client.after(2000, function(){
-		state = STATE_GOINGTOZ;
-		setInterval(update, 500)	
-	//})	
-});
+var interval;
 
+function starter(){
+	client.takeoff(function() {
+		//client.calibrate(0)
+		//client.after(2000, function(){
+			state = STATE_GOINGTOZ;
+			if (!interval) interval = setInterval(update, 500)	
+		//})
+	});
+}
 
-	function update(){	
-		if (state == STATE_GOINGTOZ) {
-			distanceZ = tarAltitude - z;
-			zInRange = Math.abs(z - tarAltitude) <= (EPSILON * INCHESTOMETER) / 2;
-			console.log("STATE_GOINGTOZ. Am at " + z + " = " + zInRange + " EPSILON= " + (EPSILON * INCHESTOMETER)/ 2 + " distZ= "+ distanceZ);
-			if (zInRange){
-				console.log("In Range Z")
-				client.stop()
-				state = STATE_FLIPPING
-				flipper()
+function resetDropCounter(the_password){
+	request.post('http://drone.gotechnica.org/drops/reset', {form: {password: the_password}},
+		function (error, response, body){
+			if (error || response.statusCode != 200){
+				console.log('Invalid password.');
+			}
+	});
+}
+
+function getNextDrop(the_password, callback){
+	request.post('http://drone.gotechnica.org/drops/next', {form: {password: the_password}}, 
+		function (error, response, body){
+			if (!error && response.statusCode == 200){
+				callback(body);
+			}
+			else {
+				console.log('Invalid password.');
+			}
+	});
+}
+
+function update(){	
+	if (state == STATE_GOINGTOZ) {
+		distanceZ = tarAltitude - z;
+		zInRange = Math.abs(z - tarAltitude) <= (EPSILON * INCHESTOMETER) / 2;
+		console.log("STATE_GOINGTOZ. Am at " + z + " = " + zInRange + " EPSILON= " + (EPSILON * INCHESTOMETER)/ 2 + " distZ= "+ distanceZ);
+		if (zInRange){
+			console.log("In Range Z")
+			client.stop()
+				//state = STATE_FLIPPING
+				//flipper()
 				setTimeout(function(){
 					state = STATE_GOINGTOZ
 				}, 3000)
@@ -110,10 +161,10 @@ client.takeoff(function() {
 		}
 	}
 
-function flipper(){
-	console.log("Flipping")
-	client.animate('flipLeft', 100)
-}
+	function flipper(){
+		console.log("Flipping")
+		client.animate('flipLeft', 100)
+	}
 
 
 
