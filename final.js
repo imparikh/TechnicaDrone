@@ -50,8 +50,8 @@ var STATE_GOINGTOZ = 6;
 var state = STATE_TAKEOFF;
 
 var didWarn = false;
-var HOMEX = 50
-var HOMEY = 100
+var HOMEX = 85
+var HOMEY = 85
 
 batteryLife = 0;
 client.on('navdata', function(data) {
@@ -184,6 +184,7 @@ function getNextDrop(the_password, callback){
 			else {
 				console.log('Invalid password .');
 			}
+			secondRun = false;
 	});
 }
 
@@ -205,8 +206,8 @@ function update() {
 		dy = tarY - (y)
 		//console.log('dx ' + dx + 'dy ' +dy)
 		distance = Math.sqrt(dx * dx + dy * dy)
-		speedX = dx / distance * 0.05
-		speedY = dy / distance * 0.06
+		speedX = dx / distance * 0.04
+		speedY = dy / distance * 0.05
 		if (oldPos && (x + velocity.x > 100 || x + velocity.x < 0 || 
 			y + velocity.y > 100 || y + velocity.y < 0)) {
 			oldPos = false;
@@ -277,7 +278,7 @@ function flipper(){
 	oldPos = false;
 
 	client.animateLeds('blinkGreenRed', 5, 5)
-	client.after(1000 - 1000 * batteryLife/100, function(){
+	client.after(1000 , function(){
 		client.stop()
 		tarX = HOMEX
 		tarY = HOMEY
