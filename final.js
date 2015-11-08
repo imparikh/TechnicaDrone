@@ -14,11 +14,17 @@ var oldPos;
 var velocity = {'x': 0, 'y':0, 'z':0};
 
 //get the password
-var pw = fs.readFile('./password', 'utf8', function (err, data) {
+var pw
+
+fs.readFile('./password', 'utf8', function (err, data) {
+	console.log(data + " <--- data")
 	if (err) {
+		console.log("we have an error")
 	    return console.log(err);
 	}
-	return data.toString();
+	console.log(data.toString() + "<--- data.toString()")
+	pw = data.toString()
+	resetDropCounter(pw);
 });
 
 var args = {};
@@ -27,7 +33,6 @@ process.argv.forEach(function (val, index, array) {
         args = {ip: val};
 });
 
-resetDropCounter(pw);
 	
 var arDrone = require('ar-drone');
 var client  = arDrone.createClient(args);
@@ -45,13 +50,21 @@ var STATE_GOINGTOZ = 6;
 var state = STATE_TAKEOFF;
 
 var didWarn = false;
+var HOMEX = 50
+var HOMEY = 100
+
+batteryLife = 0;
 client.on('navdata', function(data) {
 	if (data.demo && state != STATE_FLIPPING) {
 		z = data.demo.altitude;
 		//velocity = data.demo.velocity;
+		batteryLife = data.demo.batteryPercentage
 		if (data.demo.batteryPercentage <= 40 && !didWarn) {
 			console.log('battery low');
 			didWarn = true;
+			tarX = HOMEX
+			tarY = HOMEY
+			secondRun = true
 		}
 
 		updateOverheadPosition();
@@ -95,6 +108,13 @@ process.stdin.on('data', function (text) {
 		client.front(0)
 		client.back(0)
 	}
+	else if (text === 'r\n'){
+		client.stop();
+		sleep = false
+	}
+	else if (text === 'b\n'){
+		console.log("battery percentage -> " + batteryLife)
+	}
 	else{
 		client.stop()
 		console.log("HALT")
@@ -105,10 +125,11 @@ function aborter() {
 	console.log('Abort');
 	client.land();
 }
-var count = 0
+
 function continueOk(){
 	console.log('go');
-	
+	sleep = false;
+	console.log(pw + "--- pw")
 	getNextDrop(pw, function(data) {
 		var drop = JSON.parse(data)
 
@@ -124,17 +145,17 @@ function continueOk(){
 var interval;
 
 function clamper(targ){
-	if (targ < 10)
-		return 10;
-	else if (targ > 75)
-		return 75;
+	if (targ <= 0)
+		return 0;
+	else if (targ >= 100)
+		return 100;
 	else
 		return targ;
 }
 
 function starter(){
-	count ++
 	client.takeoff(function() {
+		secondRun = false;
 		updateOverheadPosition();
 		//client.calibrate(0)
 		state = STATE_GOINGDIAG;
@@ -147,7 +168,7 @@ function resetDropCounter(the_password){
 	request.post('http://drone.gotechnica.org/drops/reset', {form: {password: the_password}},
 		function (error, response, body){
 			if (error || response.statusCode != 200){
-				console.log('Invalid password.');
+				console.log('Invalid  password.');
 			}
 	});
 }
@@ -155,20 +176,22 @@ function resetDropCounter(the_password){
 function getNextDrop(the_password, callback){
 	request.post('http://drone.gotechnica.org/drops/next', {form: {password: the_password}}, 
 		function (error, response, body) {
+			console.log(pw + '-----pw')
+			console.log(body + ' -----body')
 			if (!error && response.statusCode == 200){
 				callback(body);
 			}
 			else {
-				console.log('Invalid password.');
+				console.log('Invalid password .');
 			}
 	});
 }
 
-var sleep = false;
+var sleep = true;
 var goHome = false;
 var secondRun = false;
 function update() {	
-	console.log('the stae' + state);
+	console.log('the state' + state);
 	if (sleep){
 		console.log("I am sleeping.")
 		return;
@@ -205,6 +228,7 @@ function update() {
 			else{
 				console.log("landing");
 				client.land()
+				sleep = true
 			}
 		}
 
@@ -253,10 +277,10 @@ function flipper(){
 	oldPos = false;
 
 	client.animateLeds('blinkGreenRed', 5, 5)
-	client.after(1000, function(){
+	client.after(1000 - 1000 * batteryLife/100, function(){
 		client.stop()
-		tarX = 25
-		tarY = 75
+		tarX = HOMEX
+		tarY = HOMEY
 		client.animate('flipLeft', 100)
 		
 	});
