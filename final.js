@@ -14,31 +14,30 @@ var oldPos;
 var velocity = {'x': 0, 'y':0, 'z':0};
 
 //get the password
-var pw
+var pw;
 
-fs.readFile('./password', 'utf8', function (err, data) {
+fs.readFile('./password.txt', 'utf8', function (err, data) {
 	console.log(data + " <--- data")
 	if (err) {
 		console.log("we have an error")
 	    return console.log(err);
 	}
 	console.log(data.toString() + "<--- data.toString()")
-	pw = data.toString()
-	resetDropCounter(pw);
+	pw = data.toString().trim()
+	//resetDropCounter(pw);
 });
 
 var args = {};
 process.argv.forEach(function (val, index, array) {
         if (index < 2 || val == 'ip') return;
-        args = {ip: val};
+        args = {'ip': val};
 });
 
-	
 var arDrone = require('ar-drone');
 var client  = arDrone.createClient(args);
 
 var INCHESTOMETER = 0.0254
-var EPSILON = 10
+var EPSILON = 15
 var ALTEPSILON = 0.06
 
 var STATE_TAKEOFF = 1;
@@ -50,12 +49,12 @@ var STATE_GOINGTOZ = 6;
 var state = STATE_TAKEOFF;
 
 var didWarn = false;
-var HOMEX = 85
-var HOMEY = 85
+var HOMEX = 50
+var HOMEY = 100
 
 batteryLife = 0;
 client.on('navdata', function(data) {
-	if (data.demo && state != STATE_FLIPPING) {
+	if (data.demo && state != STATE_FLIPPING) { // && state != STATE_FLIPPING
 		z = data.demo.altitude;
 		//velocity = data.demo.velocity;
 		batteryLife = data.demo.batteryPercentage
@@ -92,21 +91,43 @@ process.stdin.on('data', function (text) {
 		client.left(0.100);
 		client.front(0);
 		client.back(0);
+		client.up(0);
+		client.down(0);
 	}
 	else if (text === 'w\n'){
 		client.front(0.100);
 		client.left(0);
 		client.right(0);
+		client.up(0);
+		client.down(0);
 	}
 	else if (text === 's\n'){
 		client.back(0.100)
 		client.right(0);
 		client.left(0);
+		client.up(0);
+		client.down(0);
 	}
 	else if (text === 'd\n'){
 		client.right(0.100)
 		client.front(0)
 		client.back(0)
+		client.up(0);
+		client.down(0);
+	}
+	else if (text === 'e\n'){
+		client.up(0.1)
+		client.front(0)
+		client.back(0)
+		client.left(0);
+		client.right(0);
+	}
+	else if (text === 'q\n'){
+		client.down(0.1)
+		client.front(0)
+		client.back(0)
+		client.left(0);
+		client.right(0);
 	}
 	else if (text === 'r\n'){
 		client.stop();
@@ -138,8 +159,8 @@ function continueOk(){
 		tarX = clamper(drop.xcoord)
 
 		console.log(tarX + ", " + tarY)
-	})
-	starter()
+		starter()
+	});
 }
 
 var interval;
@@ -154,12 +175,14 @@ function clamper(targ){
 }
 
 function starter(){
+	console.log("have started")
 	client.takeoff(function() {
+		sleep = false;
+		console.log("have taken off")
 		secondRun = false;
 		updateOverheadPosition();
 		//client.calibrate(0)
 		state = STATE_GOINGDIAG;
-		secondRun = false;
 		if (!interval) interval = setInterval(update, 100);
 	});
 }
@@ -168,7 +191,7 @@ function resetDropCounter(the_password){
 	request.post('http://drone.gotechnica.org/drops/reset', {form: {password: the_password}},
 		function (error, response, body){
 			if (error || response.statusCode != 200){
-				console.log('Invalid  password.');
+				console.log('Invalid password.');
 			}
 	});
 }
@@ -180,11 +203,12 @@ function getNextDrop(the_password, callback){
 			console.log(body + ' -----body')
 			if (!error && response.statusCode == 200){
 				callback(body);
+				secondRun = false;
 			}
 			else {
 				console.log('Invalid password .');
 			}
-			secondRun = false;
+			
 	});
 }
 
@@ -199,14 +223,14 @@ function update() {
 	}
 	
 	if (state == STATE_GOINGDIAG && x) {
-		console.log('x ' + x + ", " + y)
+		console.log('x ' + x + ", " + y + ", "+ z)
 		//console.log('tarX ' + tarX + ", tarY " + tarY)
-		dx = tarX - (x)
+		dx = tarX - (x + velocity.x)
 		//because weird dimensions
-		dy = tarY - (y)
+		dy = tarY - (y + velocity.y)
 		//console.log('dx ' + dx + 'dy ' +dy)
 		distance = Math.sqrt(dx * dx + dy * dy)
-		speedX = dx / distance * 0.04
+		speedX = dx / distance * 0.05
 		speedY = dy / distance * 0.05
 		if (oldPos && (x + velocity.x > 100 || x + velocity.x < 0 || 
 			y + velocity.y > 100 || y + velocity.y < 0)) {
@@ -280,13 +304,16 @@ function flipper(){
 	client.animateLeds('blinkGreenRed', 5, 5)
 	client.after(1000 , function(){
 		client.stop()
+	}).after(500, function() {
 		tarX = HOMEX
 		tarY = HOMEY
 		client.animate('flipLeft', 100)
-		
+		secondRun = true;
 	});
+		
+	//});
 
-	secondRun = true;
+	
 }
 
 function move (speedX, speedY) {
