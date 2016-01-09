@@ -7,3 +7,5 @@ to drop paint. Then, the drone went and did it. This was demonstrated at the Tec
 Tracking software done with python and OpenCV.
 
 Automated runs done with Node.js
+
+Check out the video here: http://drone.gotechnica.org/
